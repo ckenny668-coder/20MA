@@ -1,5 +1,1 @@
-  yfinance
-  pandas
-  numpy
-  requests
-  lxml
+streamlit
