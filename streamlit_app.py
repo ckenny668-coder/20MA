@@ -1,14 +1,21 @@
-"""Streamlit 外殼：直接顯示同資料夾的 index.html（由 ma_fan_breakout.py 在本機產生）。
-掃描太久、免費空間會逾時，所以資料在本機算好，這裡只負責顯示。"""
-import pathlib
+"""台股分析工具（入口）：把兩個頁面放在同一個網站，用上方分頁切換。
+
+  - 📈 Weinstein 階段分析：輸入台股編號（或美股代號），看耗盡缺口、Stage 3 與大戶持股籌碼（預設首頁）
+  - 🚀 均線發散突破：顯示本機 ma_fan_breakout.py 產生的 index.html 掃描結果
+
+在「均線發散突破」的每檔卡片按「Weinstein 分析 ↗」，會開新分頁並自動分析該檔。
+"""
 import streamlit as st
-import streamlit.components.v1 as components
 
-st.set_page_config(page_title="均線發散突破", layout="wide", initial_sidebar_state="collapsed")
-st.markdown("<style>.block-container{padding:0.5rem 0.5rem 0}header{visibility:hidden}</style>", unsafe_allow_html=True)
+st.set_page_config(page_title="台股分析工具", page_icon="📈", layout="wide")
 
-path = pathlib.Path(__file__).with_name("index.html")
-if path.exists():
-    components.html(path.read_text(encoding="utf-8"), height=1800, scrolling=True)
-else:
-    st.error("找不到 index.html，請先在本機執行 ma_fan_breakout.py，並把 index.html 上傳到 repo 最外層。")
+pages = [
+    st.Page("views/weinstein.py", title="Weinstein 階段分析", icon="📈", default=True),
+    st.Page("views/breakout.py", title="均線發散突破", icon="🚀", url_path="breakout"),
+]
+
+try:
+    pg = st.navigation(pages, position="top")   # 新版 Streamlit：分頁放在最上方
+except TypeError:
+    pg = st.navigation(pages)                   # 舊版：放在側邊欄
+pg.run()
