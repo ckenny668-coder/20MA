@@ -45,13 +45,13 @@ jobs:
               sys.exit("檢查失敗：股票池太少或資料太舊，不覆蓋網頁")
           PY
 
-      # 程式輸出在 docs/index.html；同時複製一份到根目錄，兩個位置都保持最新
+      # 程式輸出在 docs/index.html，但 Streamlit 只讀倉庫根目錄的 index.html，所以複製過去並只提交這一份
       - name: 提交更新
         run: |
           cp docs/index.html index.html
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html docs/index.html
+          git add index.html
           if git diff --cached --quiet; then
             echo "沒有變更"
           else
