@@ -1,0 +1,60 @@
+name: 每日更新均線發散突破
+
+on:
+  schedule:
+    # UTC 08:00 = 台北時間 16:00，週一到週五（台股 13:30 收盤，Yahoo 資料已完整）
+    - cron: "0 8 * * 1-5"
+  workflow_dispatch:   # 也可到 Actions 頁面手動按 Run workflow
+
+permissions:
+  contents: write      # 需要把更新後的 index.html 提交回倉庫
+
+concurrency:
+  group: update-ma
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安裝套件
+        run: pip install yfinance pandas numpy requests lxml
+
+      # --fresh：忽略 frames.pkl 快取，一律重新下載（雲端每次都是全新環境，本來就沒有快取）
+      - name: 重新下載資料並產生網頁
+        run: python ma_fan_breakout.py --fresh
+
+      # 下載失敗或資料不完整時直接中止，不覆蓋網頁，舊的網頁會繼續顯示
+      - name: 檢查輸出
+        run: |
+          python - <<'PY'
+          import re, base64, gzip, json, sys, datetime as dt
+          html = open("docs/index.html", encoding="utf-8").read()
+          raw = re.search(r'<script id="payload" type="application/json">(.*?)</script>', html, re.S).group(1).strip()
+          m = json.loads(gzip.decompress(base64.b64decode(raw)))["meta"]
+          age = (dt.date.today() - dt.date.fromisoformat(m["last_date"])).days
+          print(f"資料收盤日 {m['last_date']}（距今 {age} 天）｜股票池 {m['pool']} 檔｜最新一日 {m['last_n']} 檔符合")
+          if m["pool"] < 1500 or age > 10:
+              sys.exit("檢查失敗：股票池太少或資料太舊，不覆蓋網頁")
+          PY
+
+      # 程式輸出在 docs/index.html；同時複製一份到根目錄，兩個位置都保持最新
+      - name: 提交更新
+        run: |
+          cp docs/index.html index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html docs/index.html
+          if git diff --cached --quiet; then
+            echo "沒有變更"
+          else
+            git commit -m "自動更新 $(TZ=Asia/Taipei date +%F)"
+            git push
+          fi
